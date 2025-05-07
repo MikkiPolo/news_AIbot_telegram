@@ -1,0 +1,26 @@
+# Python стандартное
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Виртуальное окружение
+venv/
+env/
+
+# Секреты
+.env
+config.py
+
+# Логи
+*.log
+bot.log
+news_logs.csv
+
+# IDE (PyCharm и другие)
+.idea/
+.vscode/
+
+# Системные файлы
+.DS_Store
+Thumbs.db
