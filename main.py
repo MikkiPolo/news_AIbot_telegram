@@ -1,5 +1,6 @@
 import logging
 import pandas as pd
+import os
 import textwrap
 from telegram import Update, InputFile, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.constants import ChatAction
@@ -8,7 +9,15 @@ from telegram.ext import (ApplicationBuilder, CommandHandler, MessageHandler,
 from telegram.ext import filters
 from datetime import datetime
 from openai import OpenAI
-from settings import TELEGRAM_TOKEN, OPENAI_API_KEY, CHANNEL_ID, OWNER_ID, LOG_FILE
+# from settings import TELEGRAM_TOKEN, OPENAI_API_KEY, CHANNEL_ID, OWNER_ID, LOG_FILE
+
+
+TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
+OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
+CHANNEL_ID = os.environ["CHANNEL_ID"]
+OWNER_ID = int(os.environ["OWNER_ID"])
+LOG_FILE = os.environ.get("LOG_FILE", "news_logs.csv")
+
 
 # Инициализация клиента OpenAI
 client = OpenAI(api_key=OPENAI_API_KEY)
