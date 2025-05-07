@@ -11,6 +11,7 @@ env/
 # Секреты
 .env
 config.py
+settings.py
 
 # Логи
 *.log

@@ -8,7 +8,7 @@ from telegram.ext import (ApplicationBuilder, CommandHandler, MessageHandler,
 from telegram.ext import filters
 from datetime import datetime
 from openai import OpenAI
-from config import TELEGRAM_TOKEN, OPENAI_API_KEY, CHANNEL_ID, OWNER_ID, LOG_FILE
+from settings import TELEGRAM_TOKEN, OPENAI_API_KEY, CHANNEL_ID, OWNER_ID, LOG_FILE
 
 # Инициализация клиента OpenAI
 client = OpenAI(api_key=OPENAI_API_KEY)
