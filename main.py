@@ -1,16 +1,13 @@
 import logging
 import pandas as pd
 import os
-import textwrap
 from telegram import Update, InputFile, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (ApplicationBuilder, CommandHandler, MessageHandler,
                           CallbackQueryHandler, ContextTypes, filters)
-from telegram.ext import filters
 from datetime import datetime
 from openai import OpenAI
 from dotenv import load_dotenv
 load_dotenv()
-
 
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
@@ -18,10 +15,8 @@ CHANNEL_ID = os.environ["CHANNEL_ID"]
 OWNER_ID = int(os.environ["OWNER_ID"])
 LOG_FILE = os.environ.get("LOG_FILE", "news_logs.csv")
 
-# Инициализация клиента OpenAI
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -38,43 +33,33 @@ PROMPT_TEMPLATE = """
 
 "{news}"
 
-Формат комментария:
-– Объём: 2–3 предложения
-– Тональность: выбирай из трёх стилей: Иронично и по-человечески, Прямолинейно, твёрдо, без сюсюканий, Саркастично, но с умом
+Сгенерируй полноценный пост по шаблону:
 
-📌 Главное:
-– Комментарий звучит так, как будто его оставил умный, неравнодушный россиянин, не робот.
-– Если кто-то в новости нападает на Россию, её руководство или граждан, вставай на защиту. Без фанатизма, но уверенно.
-– Не пиши канцеляритом. Без штампов и “наши должны”.
-– Обязательно отделяй новость и комментарий эмодзи, подходящими по смыслу.
-- если в заголовки есть чье то высказывание, обязательно используй его
-- используй один из следующих эмодзи в зависимости от темы новости: Срочные новости: ⚡️,📢, 📰; Политика / Кремль: 🏛️,🗳,️📣; Армия / оборона: 🪖,🛡,️🚁,🔫,🚀; Дипломатия / международные дела: 🌐,🕊️,✈️,📜; Санкции / давление: 🚫,📉,🕵🏻,‍️💼; Экономика / финансы: 📈,📊,💰,💹,💸; Нефть / газ / энергетика: 🛢️,⛽,🔥,⚡; Технологии / ИИ / наука: 🤖,🧠,🔬; Образование / знания: 🧪,📚,🧬,🎓; Медицина / здоровье: 🏥,🧼,🦠,💉,Общество / люди / культура: 👨‍👩‍👧‍👦,🎭,🧘‍♂️,💬;Криминал / происшествия: 🚔,🧯,🚨,🕳️;Космос / наука / будущее: 🚀,🛰️,🌌,🔭;Россия и мир: 🇷🇺,🌍,📍.
-- используй следующие эмодзи для комментариев в соответствии с тоном и мыслью: Ироничные: 😏,😉,🙂,🙃,🤷,️😌,🤨,🎬,🕶️,🪞; Прямолинейные: ❗️,✊🏻,🛡️,⚔️,🚫,💢,🧱,🪖,🔒,🧨,👊🏻,💥,🗿; Саркастичные: 🤡,🎭,🙈,🫢,🥴,🃏,🎪,🛸,📺,🐸,🪦; Позитив / поддержка / гордость: 🙌🏻,👏🏻,🏆,🎉,🇷🇺,🫡,🙏🏻,🪖,💪🏻,🕊️; Удивление / размышления: 🤔,🧐,📌,💭,📚,📎.
+1. Сначала — краткая суть новости (1–2 предложения).
+2. Затем — комментарий (2–3 предложения).
+3. Раздели смысловые части эмодзи (см. ниже).
+4. Обязательно используй стиль: Иронично и по-человечески, Прямолинейно, или Саркастично, в зависимости от содержания новости.
+5. Не добавляй воду, канцелярит, клише. Пиши живо, от лица россиянина.
 
-Шаблон поста:
-[Краткая суть новости 1-2 предложения]
+📌 Формат поста:
 
-Мой комментарий: [комментарий новости]
+[Эмодзи из списка] [Краткая суть новости]
 
+[Эмодзи из списка] Мой комментарий: [твой комментарий]
 
-Примеры:
-[Эмодзи из списка]СМИ: В Европарламенте предложили ввести санкции против “российской пропаганды” в соцсетях.
-
-[Эмодзи из списка] Мой комментарий: Да-да, пусть лучше котики в TikTokе танцуют. Глубина мысли зашкаливает.
-
-[Эмодзи из списка]Армия России получила новую партию беспилотников для наблюдения и разведки.
-
-[Эмодзи из списка] Мой комментарий: Хорошая новость. Технологии — наш новый фронт. Смотрим вперёд, не оглядываясь.
-
-[Эмодзи из списка]Байден заявил, что Россия “не имеет права вмешиваться в дела Украины”.
-
-[Эмодзи из списка] Мой комментарий: А США, конечно, имеет право вмешиваться в дела всех стран мира. Логика как всегда “железная”.
-
-[Эмодзи из списка]Курс рубля укрепился на фоне роста цен на нефть.
-
-[Эмодзи из списка]Мой комментарий: А рубль ещё покажет характер. 
+Выводи строго по формату. Не повторяй инструкций.
 """
 
+COPYWRITING_PROMPT_TEMPLATE = """
+Ты — копирайтер, создающий короткие, выразительные посты от лица мужчины 35 лет. Вот задача:
+
+{instruction}
+
+Формат:
+**❗️[Заголовок]**
+
+[Текст поста]
+"""
 
 # Лог в .csv
 def log_to_csv(user_id: int, news: str, response: str) -> None:
@@ -86,9 +71,6 @@ def log_to_csv(user_id: int, news: str, response: str) -> None:
         df = pd.DataFrame(columns=["timestamp", "user_id", "news", "response"])
     df = pd.concat([df, pd.DataFrame([entry])], ignore_index=True)
     df.to_csv(LOG_FILE, index=False)
-
-
-# Форматирование
 
 def extract_and_format(response: str) -> str:
     response = response.replace("Мой комментарий:\n", "Мой комментарий: ")
@@ -109,8 +91,6 @@ def extract_and_format(response: str) -> str:
 
     return "\n\n".join(formatted)
 
-
-# Генерация поста
 async def generate_post(news: str, comment: str = None, style: str = None, is_topic: bool = False, is_copywriting: bool = False) -> str:
     if is_topic or is_copywriting:
         prompt = COPYWRITING_PROMPT_TEMPLATE.format(instruction=news)
@@ -135,13 +115,11 @@ async def generate_post(news: str, comment: str = None, style: str = None, is_to
             temperature=0.7
         )
         raw = response.choices[0].message.content.strip()
-        return raw  # не применяем extract_and_format к копирайтингу
+        return raw if is_copywriting else extract_and_format(raw)
     except Exception as e:
         logging.exception("OpenAI API error")
         return f"Не удалось сгенерировать пост: {e}"
 
-
-# Обработка стиля
 async def handle_style_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
@@ -172,79 +150,31 @@ async def handle_style_selection(update: Update, context: ContextTypes.DEFAULT_T
 
     await query.message.reply_text(result, parse_mode="Markdown", reply_markup=keyboard)
 
-
-# Основной обработчик
 async def unified_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
     if user_id != OWNER_ID:
         await update.message.reply_text("Извините, доступ к боту разрешён только владельцу.")
         return
-    if context.user_data.get('copywriting_mode'):
-        context.user_data['copywriting_mode'] = False
-        instruction = update.message.text.strip()
-        await update.message.reply_text("✍️ Пишу пост по заданию...")
-        try:
-            prompt = COPYWRITING_PROMPT_TEMPLATE.format(instruction=instruction)
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=500,
-                temperature=0.7
-            )
-            post = extract_and_format(response.choices[0].message.content.strip())
-            context.user_data['news'] = instruction
-            context.user_data['post'] = post
 
-            keyboard = InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton("✅ Опубликовать", callback_data="publish"),
-                    InlineKeyboardButton("✏️ Доработать", callback_data="revise")
-                ]
-            ])
-            await update.message.reply_text(post, parse_mode="Markdown", reply_markup=keyboard)
-        except Exception as e:
-            await update.message.reply_text(f"Произошла ошибка при генерации поста: {e}")
-        return
-    user_id = update.effective_user.id
-    if user_id != OWNER_ID:
-        await update.message.reply_text("Извините, доступ к боту разрешён только владельцу.")
-        return
+    # Сохраняем media
+    if update.message.photo:
+        context.user_data['media'] = update.message.photo[-1].file_id
+        context.user_data['media_type'] = 'photo'
+    elif update.message.video:
+        context.user_data['media'] = update.message.video.file_id
+        context.user_data['media_type'] = 'video'
+    else:
+        context.user_data['media'] = None
+        context.user_data['media_type'] = None
+
     user_input = update.message.text or update.message.caption
-    user_id = update.effective_user.id
-
-    if context.user_data.get('awaiting_revision_text'):
-        context.user_data['revision_comment'] = user_input
-        context.user_data['awaiting_revision_text'] = False
-
-        news = context.user_data.get('news')
-        comment = context.user_data.get('revision_comment')
-
-        await update.message.reply_text("Дорабатываю новость...")
-        result = await generate_post(news, comment=comment, is_copywriting=True)
-        context.user_data['post'] = result
-
-        keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("✅ Опубликовать", callback_data="publish"),
-                InlineKeyboardButton("✏️ Доработать", callback_data="revise")
-            ]
-        ])
-        await update.message.reply_text(result, parse_mode="Markdown", reply_markup=keyboard)
-        return
-
     if not user_input or len(user_input.strip()) < 10:
         await update.message.reply_text("Пожалуйста, пришли осмысленную новость.")
         return
 
-    if len(user_input) > 1000:
-        await update.message.reply_text("Слишком длинная новость, сократи, пожалуйста.")
-        return
-
     await update.message.reply_text("Обрабатываю новость...")
 
-    is_topic = user_input.lower().startswith("пост:") or user_input.lower().startswith("сделай пост")
-    cleaned = user_input.split(":", 1)[1].strip() if ":" in user_input else user_input
-    result = await generate_post(cleaned, is_topic=is_topic, is_copywriting=context.user_data.get('copywriting_mode', False))
+    result = await generate_post(user_input)
     context.user_data['news'] = user_input
     context.user_data['post'] = result
 
@@ -254,11 +184,8 @@ async def unified_message_handler(update: Update, context: ContextTypes.DEFAULT_
             InlineKeyboardButton("✏️ Доработать", callback_data="revise")
         ]
     ])
-
     await update.message.reply_text(result, parse_mode="Markdown", reply_markup=keyboard)
 
-
-# Обработка кнопок
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
@@ -267,14 +194,24 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if query.data == "publish":
         post = context.user_data.get('post')
         news = context.user_data.get('news')
-        if post:
-            sent = await context.bot.send_message(chat_id=CHANNEL_ID, text=post, parse_mode="Markdown")
+        media_id = context.user_data.get('media')
+        media_type = context.user_data.get('media_type')
+
+        try:
+            if media_id:
+                if media_type == 'photo':
+                    sent = await context.bot.send_photo(chat_id=CHANNEL_ID, photo=media_id, caption=post, parse_mode="Markdown")
+                elif media_type == 'video':
+                    sent = await context.bot.send_video(chat_id=CHANNEL_ID, video=media_id, caption=post, parse_mode="Markdown")
+            else:
+                sent = await context.bot.send_message(chat_id=CHANNEL_ID, text=post, parse_mode="Markdown")
+
             context.user_data['last_published_message_id'] = sent.message_id
             log_to_csv(user_id, news, post)
             await query.edit_message_reply_markup(reply_markup=None)
             await query.message.reply_text("✅ Пост опубликован в канал.")
-
-
+        except Exception as e:
+            await query.message.reply_text(f"Ошибка при публикации: {e}")
 
     elif query.data == "revise":
         keyboard = InlineKeyboardMarkup([
@@ -285,30 +222,16 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             [
                 InlineKeyboardButton("🧵 Кратко", callback_data="style_short"),
                 InlineKeyboardButton("🗣 Эмоционально", callback_data="style_emotional")
-            ],
-            [
-                InlineKeyboardButton("🛠 Другое", callback_data="revise_custom")
             ]
         ])
         await query.edit_message_reply_markup(reply_markup=None)
-        await query.message.reply_text("Как доработать пост? Выбери стиль или укажи вручную:", reply_markup=keyboard)
+        await query.message.reply_text("Как доработать пост? Выбери стиль:", reply_markup=keyboard)
 
-    elif query.data == "revise_custom":
-        context.user_data['awaiting_revision_text'] = True
-        await query.edit_message_reply_markup(reply_markup=None)
-        await query.message.reply_text("Что нужно изменить или дополнить? Напиши комментарий.")
-
-
-# Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(
-        "Привет! Пришли мне новость, и я превращу её в пост с комментарием. Потом ты сможешь его одобрить или доработать.")
+    await update.message.reply_text("Привет! Пришли мне новость, и я превращу её в пост с комментарием. Потом ты сможешь его одобрить или доработать.")
 
-
-# Команда /дай_логи
 async def send_logs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.effective_user.id
-    if user_id != OWNER_ID:
+    if update.effective_user.id != OWNER_ID:
         await update.message.reply_text("Извини, у тебя нет доступа к логам.")
         return
 
@@ -318,10 +241,8 @@ async def send_logs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     except FileNotFoundError:
         await update.message.reply_text("Файл с логами пока не создан.")
 
-
 async def undo_last_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.effective_user.id
-    if user_id != OWNER_ID:
+    if update.effective_user.id != OWNER_ID:
         await update.message.reply_text("У тебя нет прав на удаление публикации.")
         return
 
@@ -335,69 +256,11 @@ async def undo_last_message(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     else:
         await update.message.reply_text("Нет опубликованного сообщения для удаления.")
 
-
-COPYWRITING_PROMPT_TEMPLATE = """
-Ты — копирайтер, создающий короткие, выразительные посты от лица мужчины 35 лет. Вот задача:
-
-{instruction}
-
-Твоя задача:
-1. Сформулируй короткий пост на основе описания.
-2. В начале — броский заголовок с эмодзи (❗️, 🔥, 📢 и т.д.), используй эмодзи только для заголовка
-3. Не используй заумных выражений или воды. Пиши так, как будто говоришь подписчику от первого лица.
-4. Учитывай ограничения по длине или стилю, если указаны.
-5. Выделяй абзацы и разделяй между собой пустой строкой. Каждый новый абзац начинается с "красной строки"
-6. Если после новости дан комментарий редактора — обязательно учти его. Перепиши пост с учётом замечаний. Не игнорируй редактора. Ты не должен показывать старый текст, только выдай новый финальный пост.
-
-Формат:
-**❗️[Заголовок]**
-
-[Текст поста]
-"""
-
-
-async def start_copywriting_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    context.user_data['copywriting_mode'] = True
-    await update.message.reply_text("📝 Включен режим копирайтера. Опиши, какой пост тебе нужен: тему, объём, стиль.")
-
-
-TOPIC_PROMPT_TEMPLATE = """
-Ты — копирайтер, создающий короткие, выразительные посты от лица мужчины 35 лет. Вот задача:
-
-{topic}
-
-ТТвоя задача:
-1. Сформулируй короткий пост на основе описания.
-2. В начале — броский заголовок с эмодзи (❗️, 🔥, 📢 и т.д.), используй эмодзи только для заголовка
-3. Не используй заумных выражений или воды. Пиши так, как будто говоришь подписчику от первого лица.
-4. Учитывай ограничения по длине или стилю, если указаны.
-5. Выделяй абзацы и разделяй между собой пустой строкой. Каждый новый абзац начинается с "красной строки"
-6. Если после новости дан комментарий редактора — обязательно учти его. Перепиши пост с учётом замечаний. Не игнорируй редактора. Ты не должен показывать старый текст, только выдай новый финальный пост.
-
-Формат:
-**❗️[Заголовок]**
-
-[Текст поста]
-"""
-
-
-async def undo_last_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    message_id = context.user_data.get('last_published_message_id')
-    if message_id:
-        try:
-            await context.bot.delete_message(chat_id=CHANNEL_ID, message_id=message_id)
-            await update.message.reply_text("Последнее сообщение в канале удалено.")
-        except Exception as e:
-            await update.message.reply_text(f"Ошибка при удалении сообщения: {e}")
-    else:
-        await update.message.reply_text("Нет сообщения для удаления.")
-
 if __name__ == "__main__":
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("logs", send_logs))
-    app.add_handler(CommandHandler("post", start_copywriting_mode))
     app.add_handler(CommandHandler("undo", undo_last_message))
     app.add_handler(CallbackQueryHandler(handle_style_selection, pattern="^style_"))
     app.add_handler(CallbackQueryHandler(handle_callback))
